@@ -1,12 +1,22 @@
 # ZFS2rclone
-This is a collection of backup and restore scripts to store ZFS streams into an rclone-compatible repository (eg. Box.com)
 
-It allows for splitting a ZFS stream into multiple parts that can be individually uploaded. Eg. if you have Box.com or Amazon S3, it is sometimes only allowed or effective to upload small portions (eg. 4GB). A ZFS stream of several TB's doesn't work very well in that regard. You could do a file-based transfer but there are various problems with that, first of all, it's slow and consumes lots of IOPS especially if you have lots of small files and it doesn't work if you have files that are larger than the upload limit.
+Allows you to send your ZFS snapshots to rclone and use the desired backend to store the files and restore them "where you want". This tool should be used in conjunction with zfs-auto-snapshot that create frequent/hourly/daily/monthly snapshot.
 
-How it works:
-It simply calls ZFS send into mbuffer, which halts the stream when the maximum file size has been met. It then calls a helper script to rclone the file up to the online repository, truncates the file back to zero and starts over.
+Backup
+=====
+The script manages its own instance of rclone or can be asked to use a running instance of rclone rcd. The zfs snapshot is split in multiple archives of about 2Gb that are sent to the rclone backend of your choice (see -l and -r options). You can you the -j argument to control how many parallel tasks are ran since the upload part will most likely be the bottle neck.
 
-You can thus stream and perhaps even replicate a server using any Cloud Storage platform rclone supports. This is only effective as long as your bandwidth can keep up with the changes on the disk, you should play with the number of transfers and buffer sizes for rclone as they can impact your upload speed immensely.
+When ran multiple times, this tool find the last know backup and create and incremental backup instead of a full backup.
 
-TODO:
-Write a helper script to pull down the data and re-assemble it. It works when I do it manually. Hint: rclone cat
+
+
+Note :
+* provide the systemd file that triggers the service once the daily snapshot is created.
+
+
+Restore
+=====
+Restoring takes an extra argument -c which tells the software on where to restore the backup. Example : ./backup_script.sh restore -c "zfs recv -duFv tank" -r pcloud:backup/hostmachine -n znap-daily-2023-02-03-22-30 rpool/home.
+
+This will load the snapshot zsnap-daily-2023-02-03-22-30 (and all of its parents) and pipe it to "zfs recv -duFv tank" on the same machine.
+
