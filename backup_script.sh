@@ -6,7 +6,6 @@ usage () {
     exit 2
 }
 
-
 exit_if_error () {
     if [ "$1" -gt "0" ]; then
 	echo "Exiting... ($2)" >&2
@@ -15,7 +14,7 @@ exit_if_error () {
 }
 
 is_snapshot_complete () {
-    rclone cat $1/completed
+    rclone --config $RCLONE_CONFIG_PATH cat $1/completed
     exit_if_error $? "incomplete snapshot $1"
 }
 
@@ -110,7 +109,7 @@ get_chain () {
 	fi
 	echo "snapshot $snapshot added to the queue" >&2
 	
-	next_snapshot=$(rclone cat $REMOTE/$DATASET/$snapshot/depends_on)
+	next_snapshot=$(rclone --config $RCLONE_CONFIG_PATH cat $REMOTE/$DATASET/$snapshot/depends_on)
 	exit_if_error $? "cannot read depends_on file for $snapshot"
 	snapshot=$next_snapshot
 
@@ -131,8 +130,8 @@ restore_backup () {
     WORKDIR=/var/run/zfs2rclone/${DATASET}/$SNAPSHOT    
     mkdir -p $WORKDIR
 
-    rclone lsf --include "*.par" $REMOTE/$DATASET/$SNAPSHOT | sort > $WORKDIR/files
-    parallel --retries 4 -j1 -a $WORKDIR/files -k "echo loading {} >&2; rclone cat $REMOTE/${DATASET}/$SNAPSHOT/{}" | eval "$RESTORE_COMMAND"
+    rclone  --config $RCLONE_CONFIG_PATH lsf --include "*.par" $REMOTE/$DATASET/$SNAPSHOT | sort > $WORKDIR/files
+    parallel --retries 4 -j1 -a $WORKDIR/files -k "echo loading {} >&2; rclone --config $RCLONE_CONFIG_PATH cat $REMOTE/${DATASET}/$SNAPSHOT/{}" | eval "$RESTORE_COMMAND"
 }
 
 prepare_backup_environment () {
